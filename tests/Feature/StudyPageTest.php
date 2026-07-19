@@ -373,6 +373,102 @@ class StudyPageTest extends TestCase
             ->assertCount('skipped', 0);
     }
 
+    public function test_shuffle_ignores_the_selected_subject(): void
+    {
+        $other = Subject::create(['name' => 'Otro tema']);
+        $theirs = Card::create([
+            'subject_id' => $other->id,
+            'question' => 'From another subject',
+            'answer' => 'x',
+        ]);
+
+        // Subject pinned to one that has no cards at all.
+        $component = Livewire::test(Study::class)
+            ->set('subjectId', (string) $this->subject->id)
+            ->assertSet('cardId', null)
+            ->call('toggleShuffleAll');
+
+        $this->assertTrue($component->get('shuffleAll'));
+        $component->assertSet('cardId', $theirs->id);
+    }
+
+    public function test_shuffle_does_not_always_serve_the_weakest_card(): void
+    {
+        for ($i = 0; $i < 10; $i++) {
+            $this->card("Card {$i}", confidence: $i - 5, reviews: 2);
+        }
+
+        $seen = [];
+
+        for ($i = 0; $i < 12; $i++) {
+            $seen[] = Livewire::test(Study::class)
+                ->call('toggleShuffleAll')
+                ->get('cardId');
+        }
+
+        $this->assertGreaterThan(
+            1,
+            count(array_unique($seen)),
+            'Shuffle should not deterministically serve the same card.',
+        );
+    }
+
+    public function test_shuffle_combines_with_weak_only(): void
+    {
+        $other = Subject::create(['name' => 'Otro tema']);
+        $this->card('Mine but strong', confidence: 4, reviews: 4);
+        Card::create([
+            'subject_id' => $other->id,
+            'question' => 'Theirs and strong',
+            'answer' => 'x',
+            'confidence' => 3,
+            'reviews' => 3,
+        ]);
+        $weakElsewhere = Card::create([
+            'subject_id' => $other->id,
+            'question' => 'Theirs and weak',
+            'answer' => 'x',
+            'confidence' => -3,
+            'reviews' => 3,
+        ]);
+
+        Livewire::test(Study::class)
+            ->set('subjectId', (string) $this->subject->id)
+            ->call('toggleShuffleAll')
+            ->call('toggleWeakOnly')
+            ->assertSet('cardId', $weakElsewhere->id);
+    }
+
+    public function test_turning_shuffle_off_restores_the_subject_filter(): void
+    {
+        $other = Subject::create(['name' => 'Otro tema']);
+        Card::create([
+            'subject_id' => $other->id,
+            'question' => 'Theirs',
+            'answer' => 'x',
+        ]);
+        $mine = $this->card('Mine');
+
+        Livewire::test(Study::class)
+            ->set('subjectId', (string) $this->subject->id)
+            ->call('toggleShuffleAll')
+            ->call('toggleShuffleAll')
+            ->assertSet('shuffleAll', false)
+            ->assertSet('cardId', $mine->id);
+    }
+
+    public function test_toggling_shuffle_clears_skipped_cards(): void
+    {
+        $this->card('One');
+        $this->card('Two');
+
+        Livewire::test(Study::class)
+            ->call('skip')
+            ->assertCount('skipped', 1)
+            ->call('toggleShuffleAll')
+            ->assertCount('skipped', 0);
+    }
+
     public function test_it_handles_an_empty_deck(): void
     {
         Livewire::test(Study::class)

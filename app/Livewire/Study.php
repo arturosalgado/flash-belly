@@ -23,6 +23,12 @@ class Study extends Component
     #[Url]
     public bool $weakOnly = false;
 
+    /**
+     * Pull cards at random from every subject, ignoring the subject filter.
+     */
+    #[Url]
+    public bool $shuffleAll = false;
+
     public ?int $cardId = null;
 
     public bool $revealed = false;
@@ -137,6 +143,14 @@ class Study extends Component
         $this->loadNext();
     }
 
+    public function toggleShuffleAll(): void
+    {
+        $this->shuffleAll = ! $this->shuffleAll;
+        $this->skipped = [];
+
+        $this->loadNext();
+    }
+
     public function restartSession(): void
     {
         $this->confidentCount = 0;
@@ -146,16 +160,33 @@ class Study extends Component
         $this->loadNext();
     }
 
+    /**
+     * Shuffle mode deliberately ignores the subject filter: the whole point
+     * is to mix every deck together.
+     */
     protected function subjectScope()
     {
         return Card::query()
-            ->when($this->subjectId, fn ($query) => $query->where('subject_id', $this->subjectId));
+            ->when(
+                ! $this->shuffleAll && $this->subjectId,
+                fn ($query) => $query->where('subject_id', $this->subjectId),
+            );
     }
 
     protected function baseQuery()
     {
         return $this->subjectScope()
             ->when($this->weakOnly, fn ($query) => $query->where('confidence', '<', 0));
+    }
+
+    /**
+     * Random across all decks when shuffling, weakest-first otherwise.
+     */
+    protected function orderedQuery()
+    {
+        return $this->shuffleAll
+            ? $this->baseQuery()->inRandomOrder()
+            : $this->baseQuery()->weakestFirst();
     }
 
     /**
@@ -169,8 +200,7 @@ class Study extends Component
             $excludeId ? [$excludeId] : [],
         )));
 
-        $next = $this->baseQuery()
-            ->weakestFirst()
+        $next = $this->orderedQuery()
             ->when($exclude, fn ($query) => $query->whereNotIn('id', $exclude))
             ->first();
 
@@ -178,11 +208,10 @@ class Study extends Component
             // Deck exhausted: start the round over, still avoiding an immediate repeat.
             $this->skipped = [];
 
-            $next = $this->baseQuery()
-                ->weakestFirst()
+            $next = $this->orderedQuery()
                 ->when($excludeId, fn ($query) => $query->whereKeyNot($excludeId))
                 ->first()
-                ?? $this->baseQuery()->weakestFirst()->first();
+                ?? $this->orderedQuery()->first();
         }
 
         $this->cardId = $next?->getKey();

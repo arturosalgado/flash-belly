@@ -25,13 +25,27 @@
 
     <div style="display: flex; flex-wrap: wrap; gap: 0.625rem; margin-bottom: 1.25rem;">
         <div style="flex: 1 1 14rem; min-width: 12rem;">
-            <select wire:model.live="subjectId">
+            <select
+                wire:model.live="subjectId"
+                @disabled($shuffleAll)
+                style="{{ $shuffleAll ? 'opacity: 0.45; cursor: not-allowed;' : '' }}"
+                title="{{ $shuffleAll ? 'Ignored while shuffling every subject' : 'Study one subject' }}"
+            >
                 <option value="">All subjects ({{ $this->totalCards }} cards)</option>
                 @foreach ($this->subjects as $subject)
                     <option value="{{ $subject->id }}">{{ $subject->name }} ({{ $subject->cards_count }})</option>
                 @endforeach
             </select>
         </div>
+
+        <button
+            type="button"
+            class="{{ $shuffleAll ? 'primary' : 'ghost' }}"
+            wire:click="toggleShuffleAll"
+            title="Pull cards at random from every subject, ignoring the subject filter"
+        >
+            &#8646;&nbsp; Shuffle all ({{ $this->totalCards }})
+        </button>
 
         <button
             type="button"
@@ -42,6 +56,12 @@
             Weak only ({{ $stats['weak'] }})
         </button>
     </div>
+
+    @if ($shuffleAll)
+        <p class="hint" style="margin: -0.5rem 0 1rem;">
+            Shuffling at random across <strong>every subject</strong>{{ $weakOnly ? ' (weak cards only)' : '' }} &mdash; the subject filter is ignored.
+        </p>
+    @endif
 
     @if ($card)
         <div
