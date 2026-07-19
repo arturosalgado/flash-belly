@@ -19,7 +19,7 @@
                     Reset
                 </button>
             @endif
-            <a href="/admin/cards" class="link">Manage</a>
+            <a href="{{ \App\Filament\Resources\Cards\CardResource::getUrl('index') }}" class="link">Manage</a>
         </div>
     </div>
 
@@ -140,7 +140,7 @@
                             Add or import cards first, then come back here to study them.
                         @endif
                     </p>
-                    <a href="/admin/cards" class="link">Go to cards</a>
+                    <a href="{{ \App\Filament\Resources\Cards\CardResource::getUrl('index') }}" class="link">Go to cards</a>
                 @endif
             </div>
         </div>
