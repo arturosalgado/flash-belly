@@ -35,6 +35,30 @@ class StudyPageTest extends TestCase
         ]);
     }
 
+    public function test_answer_first_shows_the_answer_until_space_reveals_the_question(): void
+    {
+        $card = Card::create([
+            'subject_id' => $this->subject->id,
+            'question' => '¿Dónde se inserta el transverso del abdomen?',
+            'answer' => 'En la línea alba, cresta del pubis y pecten del pubis.',
+        ]);
+
+        Livewire::test(Study::class)
+            ->call('toggleAnswerFirst')
+            ->assertSet('answerFirst', true)
+            ->assertSet('revealed', false)
+            ->assertSee($card->answer)
+            ->assertDontSee($card->question)
+            ->assertSee('Show question')
+            ->call('reveal')
+            ->assertSee($card->question)
+            ->call('toggleAnswerFirst')
+            ->assertSet('answerFirst', false)
+            ->assertSet('revealed', false)
+            ->assertSee($card->question)
+            ->assertDontSee($card->answer);
+    }
+
     public function test_it_hides_the_answer_until_revealed(): void
     {
         $card = $this->card('¿Qué es la membrana plasmática?');

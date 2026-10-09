@@ -3,7 +3,9 @@
 namespace App\Livewire;
 
 use App\Models\Card;
+use App\Models\LoginSession;
 use App\Models\Subject;
+use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
@@ -28,6 +30,12 @@ class Study extends Component
      */
     #[Url]
     public bool $shuffleAll = false;
+
+    /**
+     * Show the answer as the prompt. Space then reveals the question.
+     */
+    #[Url]
+    public bool $answerFirst = false;
 
     public ?int $cardId = null;
 
@@ -107,6 +115,12 @@ class Study extends Component
 
         $card->recordReview($delta);
 
+        $user = auth()->user();
+
+        if ($user instanceof User) {
+            LoginSession::recordCard($user);
+        }
+
         $delta > 0
             ? $this->confidentCount++
             : $this->repeatCount++;
@@ -149,6 +163,12 @@ class Study extends Component
         $this->skipped = [];
 
         $this->loadNext();
+    }
+
+    public function toggleAnswerFirst(): void
+    {
+        $this->answerFirst = ! $this->answerFirst;
+        $this->revealed = false;
     }
 
     public function restartSession(): void

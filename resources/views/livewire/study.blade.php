@@ -55,6 +55,15 @@
         >
             Weak only ({{ $stats['weak'] }})
         </button>
+
+        <button
+            type="button"
+            class="{{ $answerFirst ? 'primary' : 'ghost' }}"
+            wire:click="toggleAnswerFirst"
+            title="Show the answer first. Space reveals the question."
+        >
+            Answer first
+        </button>
     </div>
 
     @if ($shuffleAll)
@@ -93,16 +102,16 @@
                     <span class="badge">{{ $card->reviews }} {{ Str::plural('review', $card->reviews) }}</span>
                 </div>
 
-                <p class="question">{{ $card->question }}</p>
+                <p class="question">{{ $answerFirst ? $card->answer : $card->question }}</p>
 
                 @if ($revealed)
-                    <p class="answer">{{ $card->answer }}</p>
+                    <p class="answer">{{ $answerFirst ? $card->question : $card->answer }}</p>
                 @endif
 
                 <div class="controls">
                     @if (! $revealed)
                         <button type="button" class="primary" wire:click="reveal">
-                            Show answer
+                            {{ $answerFirst ? 'Show question' : 'Show answer' }}
                         </button>
                     @else
                         <button type="button" class="success" wire:click="rate(1)">
