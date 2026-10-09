@@ -78,6 +78,52 @@ class CardImageTest extends TestCase
             ->assertSee($thumb, false);
     }
 
+    public function test_a_rambling_reply_is_retried_and_pdfs_are_skipped(): void
+    {
+        $thumb = 'https://upload.wikimedia.org/wikipedia/commons/thumb/water.png';
+
+        Http::fake([
+            'api.anthropic.com/*' => Http::sequence()
+                ->push([
+                    'content' => [['type' => 'text', 'text' => "I don't see an image attached. Please share the flashcard."]],
+                ])
+                ->push([
+                    'content' => [['type' => 'text', 'text' => 'Water and mineral salts']],
+                ]),
+            'commons.wikimedia.org/*' => Http::response([
+                'query' => [
+                    'pages' => [
+                        '1' => [
+                            'title' => 'File:Chapter.pdf',
+                            'imageinfo' => [[
+                                'thumburl' => 'https://upload.wikimedia.org/wikipedia/commons/thumb/chapter.pdf',
+                                'mime' => 'application/pdf',
+                            ]],
+                        ],
+                        '2' => [
+                            'title' => 'File:Water.png',
+                            'imageinfo' => [[
+                                'thumburl' => $thumb,
+                                'mime' => 'image/png',
+                            ]],
+                        ],
+                    ],
+                ],
+            ]),
+        ]);
+
+        Card::create([
+            'subject_id' => Subject::create(['name' => 'Bioquímica'])->id,
+            'question' => '¿Cuáles son las biomoléculas inorgánicas más importantes?',
+            'answer' => 'Agua y sales minerales.',
+        ]);
+
+        Livewire::test(Study::class)
+            ->call('findImages')
+            ->assertSee($thumb)
+            ->assertDontSee('chapter.pdf');
+    }
+
     public function test_find_image_explains_when_claude_is_not_configured(): void
     {
         config(['services.anthropic.key' => null]);

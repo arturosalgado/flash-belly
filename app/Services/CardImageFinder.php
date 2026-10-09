@@ -28,7 +28,7 @@ class CardImageFinder
                 'generator' => 'search',
                 'gsrsearch' => $query,
                 'gsrnamespace' => 6,
-                'gsrlimit' => 8,
+                'gsrlimit' => 16,
                 'prop' => 'imageinfo',
                 'iiprop' => 'url|mime',
                 'iiurlwidth' => 800,
@@ -76,23 +76,57 @@ class CardImageFinder
 
     public function searchQuery(Card $card): string
     {
-        $text = $this->claude->messages([[
-            'role' => 'user',
-            'content' => <<<PROMPT
-                Name the anatomical structure in this flashcard as a short English Wikimedia Commons search. Reply with the search words only, nothing else.
+        $query = $this->ask($this->prompt($card));
+
+        if (! $this->isSearchPhrase($query)) {
+            $query = $this->ask(<<<PROMPT
+                Reply with only 2 to 5 English words naming a picture of this. No sentence.
 
                 Question: {$card->question}
                 Answer: {$card->answer}
-                PROMPT,
-        ]], 40);
+                PROMPT);
+        }
 
-        $query = trim(Str::before($text, "\n"), " \t\"'`");
-
-        if ($query === '' || strlen($query) > 120) {
+        if (! $this->isSearchPhrase($query)) {
             throw new RuntimeException('Claude did not return a search query.');
         }
 
         return $query;
+    }
+
+    private function prompt(Card $card): string
+    {
+        return <<<PROMPT
+            Translate this flashcard into a short English Wikimedia Commons picture search. Use 2 to 5 words naming something that can be photographed or drawn. Do not ask for an image. Do not explain. Reply with the search words only.
+
+            Question: {$card->question}
+            Answer: {$card->answer}
+            PROMPT;
+    }
+
+    private function ask(string $prompt): string
+    {
+        $text = $this->claude->messages([[
+            'role' => 'user',
+            'content' => $prompt,
+        ]], 30);
+
+        return trim(Str::before($text, "\n"), " \t\"'`.");
+    }
+
+    private function isSearchPhrase(string $query): bool
+    {
+        if ($query === '' || strlen($query) > 80) {
+            return false;
+        }
+
+        if (str_word_count($query) < 1 || str_word_count($query) > 6) {
+            return false;
+        }
+
+        $lower = strtolower($query);
+
+        return ! str_contains($lower, "i don't") && ! str_contains($lower, 'please');
     }
 
     public function isWikimediaImage(string $url): bool
