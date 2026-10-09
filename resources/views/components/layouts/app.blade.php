@@ -123,6 +123,37 @@
         .badge.danger  { color: var(--danger);  border-color: color-mix(in srgb, var(--danger) 40%, transparent); }
         .badge.warning { color: var(--warning); border-color: color-mix(in srgb, var(--warning) 40%, transparent); }
 
+        .card-image {
+            display: block;
+            max-width: 100%;
+            max-height: 280px;
+            margin: 0 auto 1.25rem;
+            border-radius: 0.75rem;
+            object-fit: contain;
+            background: #111;
+        }
+
+        .image-choices {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 0.6rem;
+            margin-top: 1rem;
+        }
+
+        .image-choices button {
+            padding: 0.25rem;
+            height: auto;
+        }
+
+        .image-choices img {
+            width: 100%;
+            height: 120px;
+            object-fit: contain;
+            display: block;
+            background: #111;
+            border-radius: 0.4rem;
+        }
+
         .question {
             font-size: 1.65rem;
             line-height: 1.35;

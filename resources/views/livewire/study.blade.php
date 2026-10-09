@@ -102,6 +102,10 @@
                     <span class="badge">{{ $card->reviews }} {{ Str::plural('review', $card->reviews) }}</span>
                 </div>
 
+                @if ($card->image_url)
+                    <img src="{{ $card->image_url }}" alt="" class="card-image">
+                @endif
+
                 <p class="question">{{ $answerFirst ? $card->answer : $card->question }}</p>
 
                 @if ($revealed)
@@ -125,7 +129,32 @@
                     <button type="button" class="ghost" wire:click="skip">
                         Skip
                     </button>
+
+                    <button type="button" class="ghost" wire:click="findImages" wire:loading.attr="disabled" wire:target="findImages">
+                        <span wire:loading.remove wire:target="findImages">Find image</span>
+                        <span wire:loading wire:target="findImages">Searching…</span>
+                    </button>
+
+                    @if ($card->image_url)
+                        <button type="button" class="ghost" wire:click="removeImage">
+                            Remove image
+                        </button>
+                    @endif
                 </div>
+
+                @if ($imageSearchError)
+                    <p class="hint">{{ $imageSearchError }}</p>
+                @endif
+
+                @if ($imageChoices)
+                    <div class="image-choices">
+                        @foreach ($imageChoices as $choice)
+                            <button type="button" wire:click="chooseImage(@js($choice['url']))" title="{{ $choice['title'] }}">
+                                <img src="{{ $choice['thumb'] }}" alt="{{ $choice['title'] }}">
+                            </button>
+                        @endforeach
+                    </div>
+                @endif
 
                 <p class="hint">
                     @if (! $revealed)

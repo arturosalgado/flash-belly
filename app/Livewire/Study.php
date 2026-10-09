@@ -6,12 +6,14 @@ use App\Models\Card;
 use App\Models\LoginSession;
 use App\Models\Subject;
 use App\Models\User;
+use App\Services\CardImageFinder;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Throwable;
 
 #[Layout('components.layouts.app')]
 class Study extends Component
@@ -51,6 +53,15 @@ class Study extends Component
      * @var array<int, int>
      */
     public array $skipped = [];
+
+    /**
+     * Wikimedia candidates for the card on screen. Not saved until one is chosen.
+     *
+     * @var array<int, array{url: string, thumb: string, title: string}>
+     */
+    public array $imageChoices = [];
+
+    public ?string $imageSearchError = null;
 
     public function mount(): void
     {
@@ -100,6 +111,57 @@ class Study extends Component
     public function reveal(): void
     {
         $this->revealed = true;
+    }
+
+    public function findImages(CardImageFinder $finder): void
+    {
+        $card = $this->card;
+
+        if (! $card) {
+            return;
+        }
+
+        $this->imageSearchError = null;
+        $this->imageChoices = [];
+
+        try {
+            $this->imageChoices = $finder->options($card);
+
+            if ($this->imageChoices === []) {
+                $this->imageSearchError = 'No images found for this card.';
+            }
+        } catch (Throwable $exception) {
+            report($exception);
+            $this->imageSearchError = $exception->getMessage() === 'ANTHROPIC_API_KEY is not configured.'
+                ? 'ANTHROPIC_API_KEY is not configured.'
+                : 'Could not fetch images.';
+        }
+    }
+
+    public function chooseImage(string $url): void
+    {
+        $card = $this->card;
+
+        if (! $card) {
+            return;
+        }
+
+        $match = collect($this->imageChoices)->firstWhere('url', $url);
+
+        if (! is_array($match) || ! app(CardImageFinder::class)->isWikimediaImage($url)) {
+            return;
+        }
+
+        $card->update(['image_url' => $url]);
+        unset($this->card);
+        $this->imageChoices = [];
+        $this->imageSearchError = null;
+    }
+
+    public function removeImage(): void
+    {
+        $this->card?->update(['image_url' => null]);
+        unset($this->card);
     }
 
     /**
@@ -236,6 +298,8 @@ class Study extends Component
 
         $this->cardId = $next?->getKey();
         $this->revealed = false;
+        $this->imageChoices = [];
+        $this->imageSearchError = null;
 
         unset($this->card, $this->stats);
     }

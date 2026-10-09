@@ -21,6 +21,7 @@ class Card extends Model
         'subject_id',
         'question',
         'answer',
+        'image_url',
         'confidence',
         'reviews',
         'last_reviewed_at',
